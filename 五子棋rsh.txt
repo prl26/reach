@@ -1,9 +1,9 @@
-='reach 0.1';
+'reach 0.1';
 
 const ROWS = 15;
 const COLS = 15;
 const CELLS = ROWS * COLS;
-const state=false;
+//const state=false;
 
 const cells_type = Array(Bool, 225);
 const Board_type = Object({
@@ -61,27 +61,27 @@ function getLine(singleBoard,i,len){
  const e=getCell(singleBoard,i)&&getCell(singleBoard,i-len)&&getCell(singleBoard,i-len-len)&&getCell(singleBoard,i-len-len-len)&&getCell(singleBoard,i-len-len-len-len);
  return a||b||c||d||e;
 }
-function getLine2(singleBoard,i,len){
- const a=getCell(singleBoard,i)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2)&&getCell(singleBoard,i+len+len+len-3)&&getCell(singleBoard,i+len+len+len+len+len-4);
- const b=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2)&&getCell(singleBoard,i+len+len-3);
- const c=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2);
- const d=getCell(singleBoard,i)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i-len-len-len+3);
- const e=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i-len-len-len+3)&&getCell(singleBoard,i-len-len-len-len+4);
- return a||b||c||d||e;
-}
+// function getLine2(singleBoard,i,len){
+//  const a=getCell(singleBoard,i)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2)&&getCell(singleBoard,i+len+len+len-3)&&getCell(singleBoard,i+len+len+len+len+len-4);
+//  const b=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2)&&getCell(singleBoard,i+len+len-3);
+//  const c=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i+len+len-2);
+//  const d=getCell(singleBoard,i)&&getCell(singleBoard,i+len-1)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i-len-len-len+3);
+//  const e=getCell(singleBoard,i)&&getCell(singleBoard,i-len+1)&&getCell(singleBoard,i-len-len+2)&&getCell(singleBoard,i-len-len-len+3)&&getCell(singleBoard,i-len-len-len-len+4);
+//  return a||b||c||d||e;
+// }
 
 
 
 
-function isWin(singleBoard) {
+function isWin(singleBoard,i) {
   return (
   // 横着的
     getLine(singleBoard,i,1 )||
   //竖着的
-    getLine(singleBoard,i,15)||
+    getLine(singleBoard,i,15)
   //斜着的
-    getLine2(singleBoard,i,15)||
-    getLine2(singleBoard,i,-15)
+    // getLine2(singleBoard,i,15)||
+    // getLine2(singleBoard,i,-15)
   );
 }
 function allPlaced(board){   
@@ -92,16 +92,16 @@ function allPlaced(board){
    &&cellBoth(board,218) &&cellBoth(board,219)&&cellBoth(board,220) &&cellBoth(board,221)&&cellBoth(board,222) &&cellBoth(board,223)&& cellBoth(board,224)   
   )
 }
-function isDone(board){
-  return (isWin(board.O) || isWin(board.X) || allPlaced(board));   
+function isDone(board,i){
+  return (isWin(board.O,i) || isWin(board.X,i) || allPlaced(board));   
 }
 const finalBoardX = (board) => ({
   ...board,
-  win: isWin(board.X)
+  win: isWin(board.X,place)
 })
 const finalBoardO = (board) => ({
   ...board,
-  win: isWin(board.O)
+  win: isWin(board.O,place)
 })
 
 
@@ -109,8 +109,8 @@ const Player = {
   ...hasRandom,
   getStep: Fun([Board_type], UInt),
   informTimeout: Fun([], Null),
-  // getId: Fun([], UInt),
-  // getUrl: Fun([], Bytes(128)),
+   getId: Fun([], UInt),
+   getUrl: Fun([], Bytes(128)),
   preview: Fun([UInt, Bytes(128)], Null),
   showEnd: Fun([Board_type, UInt, Address, Bytes(128)], Null)
 };
@@ -158,19 +158,18 @@ export const main = Reach.App(
       interact.preview(id, url);
     });
 
-    var board = newBoard(true);
+    var[board,state,place] = [newBoard(true),false,0];
     invariant(balance() == 2 * wager);
     while(state==false){
       if(board.turn){
         commit();
         A.only(() => {
           const Aplay = getValidPlay(interact,board);});
-          state=(isDone,Aplay);
 
         A.publish(Aplay)
          .timeout(deadline, () => closeTo(B, informTimeout));
-
-        board = step(board, Aplay);   
+      
+        [board,state,place] = [step(board, Aplay),isDone(board,Aplay),Aplay]
         continue;
       }else {
         commit();
@@ -180,16 +179,16 @@ export const main = Reach.App(
         B.publish(Bplay)
          .timeout(deadline, () => closeTo(A, informTimeout));
 
-        board = step(board, Bplay);
+          [board,state,place] = [step(board, Bplay),isDone(board,Bplay),Bplay]
         continue; 
       } 
     }
     const [ toA, toB ] =
-          (isWin( board.X ) ? [ 2, 0 ]
-          : (isWin( board.O ) ? [ 0, 2 ]
+          (isWin( board.X,place) ? [ 2, 0 ]
+          : (isWin( board.O,place ) ? [ 0, 2 ]
           : [ 1, 1 ]));
     
-    const owner = isWin( board.X ) ? A : B;
+    const owner = isWin( board.X,place) ? A : B;
     vNFT.owner.set(owner);  
     vNFT.url.set(url);
 
@@ -205,3 +204,4 @@ export const main = Reach.App(
     });
   }
 );
+
